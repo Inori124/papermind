@@ -51,13 +51,52 @@ npm run dev
 1. **在 `.env.local` 中配置**（启动前）
 2. **在应用内配置**（启动后）：点击左侧栏设置 → 输入 API Key → 保存
 
-支持所有 OpenAI 兼容接口：
+### 支持的 AI 模型
 
-| 服务商 | Base URL | 模型名 |
-|--------|----------|--------|
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
-| 其他兼容服务 | 视服务商而定 | 视服务商而定 |
+PaperMind 兼容所有 OpenAI 格式的 API 接口。在应用内"设置"页面填入对应的 Base URL、模型名和 API Key 即可。
+
+**DeepSeek（推荐，性价比最高）**
+
+| 模型 | 模型名（填入设置） | 说明 |
+|------|-------------------|------|
+| DeepSeek V4 Pro | `deepseek-v4-pro` | 旗舰模型，1M 上下文，推荐用于精读和写作 |
+| DeepSeek V4 Flash | `deepseek-v4-flash` | 轻量快速，适合日常使用，成本更低 |
+
+- Base URL：`https://api.deepseek.com/v1`
+- API Key 获取：[platform.deepseek.com](https://platform.deepseek.com/)
+- 注意：旧模型名 `deepseek-chat` 和 `deepseek-reasoner` 将于 2026/07/24 停用
+
+**OpenAI**
+
+| 模型 | 模型名（填入设置） | 说明 |
+|------|-------------------|------|
+| GPT-4.1 | `gpt-4.1` | 代码和长上下文能力强，1M 上下文 |
+| GPT-4.1 mini | `gpt-4.1-mini` | 性价比均衡 |
+| GPT-4o | `gpt-4o` | 多模态旗舰，支持图文音频 |
+| GPT-5.4 mini | `gpt-5.4-mini` | 最新一代，推理能力强 |
+
+- Base URL：`https://api.openai.com/v1`
+- API Key 获取：[platform.openai.com](https://platform.openai.com/)
+
+**Anthropic Claude（需通过兼容代理）**
+
+| 模型 | 模型名（填入设置） | 说明 |
+|------|-------------------|------|
+| Claude Sonnet 4 | `claude-sonnet-4-20250514` | 日常任务，性价比高 |
+| Claude Opus 4 | `claude-opus-4-20250514` | 最强推理能力 |
+
+- Claude 原生 API 不是 OpenAI 格式，需通过兼容代理使用（如 [OpenRouter](https://openrouter.ai/)）
+- 通过 OpenRouter 使用时：Base URL 填 `https://openrouter.ai/api/v1`，模型名填 `anthropic/claude-sonnet-4`
+
+**其他兼容服务**
+
+任何提供 OpenAI 兼容 `/v1/chat/completions` 接口的服务都可以使用，包括：
+- [OpenRouter](https://openrouter.ai/)（聚合多家模型，一个 Key 用所有模型）
+- [Together AI](https://www.together.ai/)
+- [Groq](https://groq.com/)（推理速度极快）
+- 本地模型（通过 [Ollama](https://ollama.com/)，Base URL 填 `http://localhost:11434/v1`）
+
+> 本项目作者使用 DeepSeek V4 Pro 开发和测试，推荐作为首选模型。
 
 ## 使用说明
 
