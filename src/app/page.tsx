@@ -1,65 +1,180 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { usePapers } from '@/hooks/use-paper';
+import PaperUpload from '@/components/paper-upload';
+import PaperList from '@/components/paper-list';
+import FolderAnalysis from '@/components/folder-analysis';
+import ConfirmDialog from '@/components/confirm-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import type { Category } from '@/types';
+
+export default function HomePage() {
+  const { papers, loading, refetch, deletePaper, updatePaper } = usePapers();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [currentFolderName, setCurrentFolderName] = useState('');
+
+  const searchParams = useSearchParams();
+  const activeFolderId = searchParams.get('folder');
+
+  // 加载分类
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setCategories(data); })
+      .catch(() => {});
+  }, [papers]);
+
+  // 获取当前文件夹名称
+  useEffect(() => {
+    if (activeFolderId) {
+      fetch('/api/folders').then(r => r.json()).then(folders => {
+        const folder = (folders as any[]).find((f: any) => f.id === activeFolderId);
+        setCurrentFolderName(folder?.name || '');
+      }).catch(() => {});
+    } else {
+      setCurrentFolderName('');
+    }
+  }, [activeFolderId]);
+
+  // 回到首页时自动刷新阅读进度（SPA 路由切换会触发 mount）
+  // 额外监听 window focus 用于切回浏览器标签页的场景
+  useEffect(() => {
+    function handleFocus() {
+      refetch();
+    }
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refetch]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePaper(id);
+      toast.success('已删除');
+    } catch {
+      toast.error('删除失败');
+    }
+  };
+
+  const handleUpdate = async (id: string, data: Record<string, unknown>) => {
+    try {
+      await updatePaper(id, data);
+      toast.success('元数据已更新');
+    } catch {
+      toast.error('更新失败');
+    }
+  };
+
+  // Filter papers by folder first, then by category
+  let filteredPapers = activeFolderId
+    ? papers.filter(p => p.folderId === activeFolderId)
+    : papers;
+
+  filteredPapers = activeCategory === 'all'
+    ? filteredPapers
+    : filteredPapers.filter(p => p.categoryId === activeCategory);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="max-w-5xl mx-auto px-8 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            {currentFolderName || '我的文献库'}
+          </h2>
+          {currentFolderName && (
+            <p className="text-sm text-muted-foreground mt-1">
+              文件夹 · {filteredPapers.length} 篇论文
+            </p>
+          )}
+          {!currentFolderName && (
+            <p className="text-sm text-muted-foreground mt-1">
+              拖拽上传 PDF，AI 辅助精读
+            </p>
+          )}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </div>
+
+      {/* Category filter bar */}
+      {categories.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-6 flex-wrap">
+          <button
+            onClick={() => setActiveCategory('all')}
+            className={`inline-flex items-center h-7 px-3 rounded-full text-xs font-medium transition-colors ${
+              activeCategory === 'all'
+                ? 'bg-foreground text-background'
+                : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
+            }`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            全部
+            <span className="ml-1.5 text-[10px] opacity-70">{papers.length}</span>
+          </button>
+          {categories.map((cat) => {
+            const count = papers.filter(p => p.categoryId === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`inline-flex items-center h-7 px-3 rounded-full text-xs font-medium transition-colors ${
+                  activeCategory === cat.id
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                }`}
+              >
+                <span
+                  className="inline-block w-2 h-2 rounded-full mr-1.5"
+                  style={{ backgroundColor: cat.color }}
+                />
+                {cat.name}
+                <span className="ml-1.5 text-[10px] opacity-70">{count}</span>
+              </button>
+            );
+          })}
         </div>
-      </main>
+      )}
+
+      {/* Empty state */}
+      {!loading && papers.length === 0 && (
+        <PaperUpload onUploaded={refetch} />
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-lg" />
+          ))}
+        </div>
+      )}
+
+      {/* Paper list */}
+      {!loading && papers.length > 0 && (
+        <div className="space-y-6">
+          <PaperUpload onUploaded={refetch} />
+          {activeFolderId && <FolderAnalysis folderId={activeFolderId} />}
+          <PaperList
+            papers={filteredPapers}
+            categories={categories}
+            onDelete={setDeleteTarget}
+            onUpdate={handleUpdate}
+          />
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="删除论文"
+        description="删除后该论文的所有段落、笔记、高亮和概念都会被清除，且无法恢复。"
+        onConfirm={() => {
+          handleDelete(deleteTarget!);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
